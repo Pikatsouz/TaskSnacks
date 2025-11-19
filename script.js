@@ -16,31 +16,8 @@ const funFacts = [
   "Your brain uses about 20% of your body's energy, even at rest.",
   "Ravens can remember human faces and hold grudges.",
   "Sloths can hold their breath longer than dolphins.",
-  "Sharks existed before trees appeared on Earth.",
-  "You are about 1 cm taller in the morning than at night.",
-  "A group of hedgehogs is called a 'prickle'.",
-  "Butterflies can taste with their feet.",
-  "An octopus has nine brains: one central brain and one in each arm.",
-  "The Eiffel Tower can grow about 15 cm taller in summer due to heat.",
-  "Koalas' fingerprints are almost indistinguishable from humans'.",
-  "Rats make happy ‘laughing’ sounds when being tickled.",
-  "Bananas naturally glow blue under black light.",
-  "Cats can’t taste sweetness—they lack the receptor for it.",
-  "Penguins propose to their mates with a pebble.",
-  "Some frogs can freeze solid in winter and thaw back to life in spring.",
-  "Goldfish can remember things for months, not seconds.",
-  "The first computer mouse was made of wood.",
-  "NASA’s Apollo guidance computer was weaker than a modern smartphone.",
-  "Bubble wrap was originally invented as wallpaper.",
-  "The inventor of the Pringles can is buried in one of his cans.",
-  "If you could drive straight up, you’d reach space in about an hour.",
-  "On Mars, sunsets appear blue.",
-  "Neutron stars are so dense that a teaspoon would weigh billions of tons.",
-  "Your nose can remember around 50,000 different smells.",
-  "Humans are the only animals known to blush.",
-  "You can’t easily tickle yourself because your brain predicts your own movement.",
-  "Smiling, even when you don’t feel happy, can slightly boost your mood.",
-  "People tend to walk in circles when lost, even if they think they’re going straight."
+  "Sharks existed before trees appeared on Earth."
+  // ...you can add more here later, each as "text",
 ];
 
 let lastFunFact = null;
