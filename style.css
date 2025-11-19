@@ -101,3 +101,38 @@ button#organizeBtn:disabled {
   border-radius: 6px;
   background: #e7f1ff;
 }
+#authSection {
+  margin-bottom: 16px;
+}
+
+#authSection input {
+  width: 100%;
+  max-width: 260px;
+  padding: 8px;
+  margin: 4px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+#authSection button {
+  margin: 4px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: none;
+  background: #e5e7eb;
+  cursor: pointer;
+}
+
+#authSection button#logoutBtn {
+  background: #ef4444;
+  color: white;
+}
+
+.auth-status {
+  font-size: 0.9em;
+  color: #4b5563;
+}
+
+#dateSection {
+  margin: 12px 0;
+}
