@@ -73,9 +73,17 @@ signupBtn.addEventListener("click", async () => {
   const password = passwordInput.value.trim();
   if (!email || !password) return alert("Email and password required.");
 
-  const { error } = await supabase.auth.signUp({ email, password });
-  if (error) return alert("Sign up error: " + error.message);
-  alert("Check your email to confirm your account.");
+  try {
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+      console.error("Sign up error object:", error);
+      return alert("Sign up error: " + error.message);
+    }
+    alert("Check your email to confirm your account.");
+  } catch (e) {
+    console.error("Sign up threw exception:", e);
+    alert("Sign up error: " + e.message);
+  }
 });
 
 loginBtn.addEventListener("click", async () => {
