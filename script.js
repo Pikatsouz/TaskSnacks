@@ -1,6 +1,6 @@
 // script.js for TaskSnacks
 
-const workerUrl = "https://YOUR‐WORKER‐URL";  // <-- Replace with your actual Worker URL
+const workerUrl = "https://tasksnacks.hikarufujiart.workers.dev/";  // <-- Replace with your actual Worker URL
 
 const funFacts = [
   "Octopuses have three hearts.",
