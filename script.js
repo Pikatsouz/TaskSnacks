@@ -33,7 +33,36 @@ function getRandomFunFact() {
   lastFunFact = fact;
   return fact;
 }
+function showFunFact(fact) {
+  // small text at the bottom as before
+  funFactContainer.textContent = `🎉 Fun fact: ${fact}`;
 
+  // BIG popup in the middle
+  const popup = document.createElement("div");
+  popup.className = "fun-fact-popup";
+  popup.innerHTML = `<strong>Fun fact</strong><br>${fact}`;
+  document.body.appendChild(popup);
+
+  // trigger CSS animation
+  requestAnimationFrame(() => {
+    popup.classList.add("visible");
+  });
+
+  // confetti burst (if library loaded)
+  if (window.confetti) {
+    window.confetti({
+      particleCount: 80,
+      spread: 70,
+      origin: { y: 0.25 }
+    });
+  }
+
+  // hide after 2.5s
+  setTimeout(() => {
+    popup.classList.remove("visible");
+    setTimeout(() => popup.remove(), 200);
+  }, 2500);
+}
 // === DOM refs ===
 const organizeBtn = document.getElementById("organizeBtn");
 const brainDump = document.getElementById("brainDump");
