@@ -8,61 +8,73 @@
 </head>
 <body>
   <div class="container">
-    <h1>TaskSnacks</h1>
-    <p class="subtitle">Dump your messy thoughts. Get clear tasks. Earn a fun fact reward.</p>
+  <h1>TaskSnacks</h1>
+  <p class="subtitle">Dump your messy thoughts. Get clear tasks. Earn a fun fact reward.</p>
 
-    <!-- Auth section -->
-    <div id="authSection">
-      <input id="emailInput" type="email" placeholder="Email" />
-      <input id="passwordInput" type="password" placeholder="Password" />
-      <button id="signupBtn" type="button">Sign up</button>
-      <button id="loginBtn" type="button">Log in</button>
-      <button id="logoutBtn" type="button" style="display:none;">Log out</button>
-      <p id="authStatus" class="auth-status"></p>
-    </div>
-
-    <!-- Calendar section (full month) -->
-    <div id="calendarSection" style="display:none;">
-      <div class="calendar-header">
-        <button id="prevMonthBtn" type="button">‹</button>
-        <div id="calendarMonthLabel"></div>
-        <button id="nextMonthBtn" type="button">›</button>
-      </div>
-      <div id="calendarGrid" class="calendar-grid"></div>
-    </div>
-
-    <!-- Hidden date input used internally to track selected day -->
-    <input id="taskDate" type="date" style="display:none;" />
-
-    <!-- Sort controls -->
-    <div id="sortSection" style="display:none;">
-      <label for="sortMode">Sort tasks:</label>
-      <select id="sortMode">
-        <option value="priority">By importance (High → Low)</option>
-        <option value="created">By time (oldest → newest)</option>
-      </select>
-    </div>
-
-          <!-- Brain dump -->
-    <textarea id="brainDump" placeholder="Type everything on your mind..."></textarea>
-    <button id="organizeBtn" type="button" disabled>Organize My Mess</button>
-
-    <!-- Manual add task -->
-    <div id="manualAddSection" style="display:none;">
-      <input id="manualTaskInput" type="text" placeholder="Add a task manually..." />
-      <button id="manualAddBtn" type="button">Add</button>
-    </div>
-
-    <!-- Tasks + fun fact -->
-    <div id="tasksContainer"></div>
-    <div id="funFactContainer" class="fun-fact"></div>
-    
-    <!-- Support link -->
-    <div id="undoBar" class="undo-bar"></div>
-<div class="coffee">
-  <a href="https://ko-fi.com/tasksnacks" target="_blank">☕ Support TaskSnacks</a>
-</div>
+  <!-- Auth section -->
+  <div id="authSection">
+    <input id="emailInput" type="email" placeholder="Email" />
+    <input id="passwordInput" type="password" placeholder="Password" />
+    <button id="signupBtn" type="button">Sign up</button>
+    <button id="loginBtn" type="button">Log in</button>
+    <button id="logoutBtn" type="button" style="display:none;">Log out</button>
+    <p id="authStatus" class="auth-status"></p>
   </div>
+
+  <!-- Calendar -->
+  <div id="calendarSection" class="calendar-section" style="display:none;">
+    <div class="calendar-header">
+      <button id="prevMonthBtn" type="button">‹</button>
+      <span id="calendarMonthLabel" class="calendar-month-label">Month Year</span>
+      <button id="nextMonthBtn" type="button">›</button>
+    </div>
+    <div id="calendarGrid" class="calendar-grid"></div>
+  </div>
+
+  <!-- Sort controls -->
+  <div id="sortSection" class="sort-section" style="display:none;">
+    <label for="sortMode">Sort tasks:</label>
+    <select id="sortMode">
+      <option value="priority">By importance (High → Low)</option>
+      <option value="custom">My order</option>
+      <option value="created">By creation time</option>
+    </select>
+  </div>
+
+  <!-- Hidden date input (used by JS) -->
+  <input id="taskDate" type="date" style="display:none;" />
+
+  <!-- Brain dump -->
+  <textarea id="brainDump" placeholder="Type everything on your mind..."></textarea>
+  <button id="organizeBtn" type="button">Organize My Mess</button>
+
+  <!-- Manual add -->
+  <div id="manualAddSection" class="manual-add" style="display:none;">
+    <input
+      id="manualTaskInput"
+      type="text"
+      placeholder="Add a task manually..."
+    />
+    <button id="manualAddBtn" type="button">Add</button>
+  </div>
+
+  <!-- Tasks + fun fact -->
+  <div id="tasksContainer"></div>
+  <div id="funFactContainer" class="fun-fact"></div>
+
+  <!-- Ko-fi -->
+  <div class="coffee">
+    <a href="https://ko-fi.com/tasksnacks" target="_blank" rel="noopener">
+      ☕ Support TaskSnacks
+    </a>
+  </div>
+
+  <!-- Undo bar (swipe/delete undo) -->
+  <div id="undoBar" class="undo-bar">
+    <span id="undoText">Task deleted</span>
+    <button id="undoBtn" type="button">Undo</button>
+  </div>
+</div>
 
   <!-- Supabase client -->
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
