@@ -340,6 +340,11 @@ async function saveTaskOrderToDatabase() {
   });
   try {
     await Promise.all(updates);
+
+    // After manual reorder, show “my order / creation order”
+    if (sortMode) {
+      sortMode.value = "created";   // make sure your <option value="created"> exists
+    }
   } catch (e) {
     console.error("Error saving order:", e);
   }
