@@ -9,6 +9,13 @@ const supabaseKey =
 // Supabase client
 const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
+// --- Date helpers (fixes the 1-day ahead bug) ---
+function formatDateLocal(d) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`; // YYYY-MM-DD for <input type="date">
+}
 // Fun facts (local only)
 const funFacts = [
   "Sea otters hold hands while sleeping so they don't drift apart.",
@@ -90,6 +97,18 @@ const manualAddSection = document.getElementById("manualAddSection");
 const manualTaskInput = document.getElementById("manualTaskInput");
 const manualAddBtn = document.getElementById("manualAddBtn");
 
+// Hidden date input used to move tasks between days
+let moveDateInput = null;
+function ensureMoveDateInput() {
+  if (moveDateInput) return moveDateInput;
+  moveDateInput = document.createElement("input");
+  moveDateInput.type = "date";
+  moveDateInput.style.position = "fixed";
+  moveDateInput.style.left = "-9999px";
+  moveDateInput.style.top = "-9999px";
+  document.body.appendChild(moveDateInput);
+  return moveDateInput;
+}
 // === STATE ===
 let currentUser = null;
 let currentMonthDate = new Date(); // which month is shown in the calendar
@@ -247,9 +266,10 @@ function getLocalDateString(date = new Date()) {
 }
 
 function setToday() {
-  const todayStr = getLocalDateString(new Date());
+  const today = new Date();
+  const todayStr = formatDateLocal(today); // use LOCAL date, not UTC
   taskDateInput.value = todayStr;
-  currentMonthDate = new Date();
+  currentMonthDate = today;
 }
 
 sortMode.addEventListener("change", () => {
@@ -283,8 +303,9 @@ async function renderCalendar() {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   const monthStart = first.toISOString().slice(0, 10);
-  const last = new Date(year, month + 1, 0);
-  const monthEnd = last.toISOString().slice(0, 10);
+  const monthStart = formatDateLocal(first);
+const last = new Date(year, month + 1, 0);
+const monthEnd = formatDateLocal(last);
 
   // Which dates in this month have tasks?
   const { data, error } = await supabase
@@ -320,7 +341,7 @@ async function renderCalendar() {
   // Actual days
   for (let day = 1; day <= daysInMonth; day++) {
     const dateObj = new Date(year, month, day);
-    const dateStr = dateObj.toISOString().slice(0, 10);
+const dateStr = formatDateLocal(dateObj);
     const cell = document.createElement("div");
     cell.className = "cal-day";
     cell.textContent = day;
@@ -389,6 +410,7 @@ async function loadTasksForSelectedDate() {
 // === DRAG & DROP CONTAINER HANDLING ===
 tasksContainer.addEventListener("dragover", (e) => {
   e.preventDefault();
+  reorderTasksAtY(e.clientY);
   if (!draggedTaskElement) return;
 
   const afterElement = getDragAfterElement(tasksContainer, e.clientY);
@@ -416,7 +438,15 @@ function getDragAfterElement(container, y) {
 
   return closest.element;
 }
-
+function reorderTasksAtY(y) {
+  if (!draggedTaskElement) return;
+  const afterElement = getDragAfterElement(tasksContainer, y);
+  if (afterElement == null) {
+    tasksContainer.appendChild(draggedTaskElement);
+  } else {
+    tasksContainer.insertBefore(draggedTaskElement, afterElement);
+  }
+}
 async function saveTaskOrderToDatabase() {
   if (!tasksContainer) return;
   const items = [...tasksContainer.querySelectorAll(".task-item")];
@@ -471,7 +501,36 @@ function renderTaskItem(task) {
     div.classList.remove("dragging");
     saveTaskOrderToDatabase();
   });
+// Touch / pointer support (for phones & tablets)
+div.addEventListener("pointerdown", (e) => {
+  // For mouse, we let normal HTML5 drag handle it
+  if (e.pointerType === "mouse") return;
 
+  draggedTaskElement = div;
+  div.classList.add("dragging");
+
+  const pointerId = e.pointerId;
+  div.setPointerCapture(pointerId);
+
+  const handleMove = (ev) => {
+    reorderTasksAtY(ev.clientY);
+  };
+
+  const handleUp = async (ev) => {
+    div.releasePointerCapture(pointerId);
+    div.removeEventListener("pointermove", handleMove);
+    div.removeEventListener("pointerup", handleUp);
+    div.removeEventListener("pointercancel", handleUp);
+
+    draggedTaskElement = null;
+    div.classList.remove("dragging");
+    await saveTaskOrderToDatabase();
+  };
+
+  div.addEventListener("pointermove", handleMove);
+  div.addEventListener("pointerup", handleUp);
+  div.addEventListener("pointercancel", handleUp);
+});
   // --- Swipe-to-delete (mobile) ---
   let touchStartX = null;
   let touchCurrentX = null;
@@ -606,8 +665,63 @@ function renderTaskItem(task) {
   });
 
   controls.appendChild(prioritySelect);
+  controls.appendChild(moveDateBtn);
   controls.appendChild(upBtn);
   controls.appendChild(downBtn);
+  // Move to another day
+const moveDateBtn = document.createElement("button");
+moveDateBtn.textContent = "📆";
+moveDateBtn.title = "Move to another day";
+moveDateBtn.className = "task-move-date";
+moveDateBtn.addEventListener("click", async () => {
+  if (!currentUser) return;
+
+  const input = ensureMoveDateInput();
+  input.value = task.task_date || taskDateInput.value;
+
+  // When user picks a date
+  input.onchange = async () => {
+    const newDate = input.value;
+    if (!newDate || newDate === task.task_date) return;
+
+    try {
+      // Get how many tasks already on the target date to place this at the end
+      const { data: existing } = await supabase
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", currentUser.id)
+        .eq("task_date", newDate);
+
+      const newIndex =
+        existing && typeof existing.length === "number"
+          ? existing.length
+          : 0;
+
+      await supabase
+        .from("tasks")
+        .update({ task_date: newDate, sort_index: newIndex })
+        .eq("id", task.id);
+
+      // Reload current day and calendar
+      await loadTasksForSelectedDate();
+      await renderCalendar();
+    } catch (err) {
+      console.error("Move task date error:", err);
+      alert("Could not move task.");
+    }
+  };
+
+  // Open the date picker (mobile + desktop)
+  try {
+    if (input.showPicker) {
+      input.showPicker();
+    } else {
+      input.click();
+    }
+  } catch {
+    input.click();
+  }
+});
   controls.appendChild(deleteBtn);
 
   div.appendChild(left);
