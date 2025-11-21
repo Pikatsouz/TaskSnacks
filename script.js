@@ -197,7 +197,13 @@ signupBtn.addEventListener("click", async () => {
   if (!email || !password) return alert("Email and password required.");
 
   try {
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { error } = await supabase.auth.signUp({
+  email,
+  password,
+  options: {
+    emailRedirectTo: "https://tasksnacks.github.io/TaskSnacks/"
+  }
+});
     if (error) {
       console.error("Sign up error object:", error);
       return alert("Sign up error: " + error.message);
