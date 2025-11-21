@@ -564,99 +564,18 @@ function renderTaskItem(task) {
   div.className = `task-item ${task.priority || "low"}`;
   div.dataset.taskId = task.id;
 
-  // Make draggable (mouse)
-  div.draggable = true;
-  div.addEventListener("dragstart", () => {
-    draggedTaskElement = div;
-    div.classList.add("dragging");
-  });
-  div.addEventListener("dragend", async () => {
-    draggedTaskElement = null;
-    div.classList.remove("dragging");
-    await saveTaskOrderToDatabase();
-  });
-
-    // Touch / pointer support (for phones & tablets)
-  div.addEventListener("pointerdown", (e) => {
-    // We only handle touch here; mouse uses HTML5 drag
-    if (e.pointerType !== "touch") return;
-
-    let startX = e.clientX;
-    let startY = e.clientY;
-    let mode = null; // "drag" or "swipe"
-    let lastDeltaX = 0;
-
-    const pointerId = e.pointerId;
-    div.setPointerCapture(pointerId);
-
-    const handleMove = (ev) => {
-      const dx = ev.clientX - startX;
-      const dy = ev.clientY - startY;
-
-      // Decide if this gesture is drag or swipe:
-      if (!mode) {
-        if (Math.abs(dx) > 15 && Math.abs(dx) > Math.abs(dy)) {
-          mode = "swipe"; // mostly horizontal
-        } else if (Math.abs(dy) > 15 && Math.abs(dy) > Math.abs(dx)) {
-          mode = "drag";  // mostly vertical
-          draggedTaskElement = div;
-          div.classList.add("dragging");
-        } else {
-          // not enough movement yet
-          return;
-        }
-      }
-
-      if (mode === "drag") {
-        // vertical drag → reorder tasks
-        reorderTasksAtY(ev.clientY);
-      } else if (mode === "swipe") {
-        // horizontal swipe → prepare delete
-        lastDeltaX = dx;
-        if (dx < 0) {
-          div.style.transform = `translateX(${dx}px)`;
-          const opacity = Math.max(0.3, 1 + dx / 200);
-          div.style.opacity = String(opacity);
-        }
-      }
-    };
-
-    const handleUp = async () => {
-      div.releasePointerCapture(pointerId);
-      div.removeEventListener("pointermove", handleMove);
-      div.removeEventListener("pointerup", handleUp);
-      div.removeEventListener("pointercancel", handleUp);
-
-      if (mode === "drag") {
-        // finish drag → save order
-        draggedTaskElement = null;
-        div.classList.remove("dragging");
-        await saveTaskOrderToDatabase();
-      } else if (mode === "swipe") {
-        // finish swipe → delete or snap back
-        if (lastDeltaX < -80) {
-          // swiped far enough left → delete with undo
-          handleDelete(task, div);
-        } else {
-          // not far enough → snap back
-          div.style.transform = "translateX(0)";
-          div.style.opacity = "1";
-        }
-      } else {
-        // no real move → tap only, nothing to do
-      }
-    };
-
-    div.addEventListener("pointermove", handleMove);
-    div.addEventListener("pointerup", handleUp);
-    div.addEventListener("pointercancel", handleUp);
-  });
-  // Left side (checkbox + text)
+  // --- LEFT SIDE: drag handle + checkbox + label ---
   const left = document.createElement("div");
   left.style.display = "flex";
   left.style.alignItems = "center";
   left.style.flex = "1";
 
+  // Drag handle
+  const dragHandle = document.createElement("span");
+  dragHandle.className = "task-drag-handle";
+  dragHandle.textContent = "⋮⋮";
+
+  // Checkbox
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
   checkbox.checked = !!task.completed;
@@ -672,67 +591,71 @@ function renderTaskItem(task) {
     }
   });
 
+  // Label (task text) with rename on double-click
   const label = document.createElement("label");
   label.textContent = task.task_text;
   label.style.marginLeft = "10px";
   label.style.flex = "1";
   label.style.cursor = "text";
 
-  // === RENAME on double-click ===
-  label.addEventListener("dblclick", () => {
-    if (!currentUser) return;
+  function attachRename(labelEl) {
+    labelEl.addEventListener("dblclick", () => {
+      if (!currentUser) return;
 
-    const currentText = label.textContent;
-    const input = document.createElement("input");
-    input.type = "text";
-    input.value = currentText;
-    input.style.width = "100%";
-    input.style.borderRadius = "8px";
-    input.style.border = "1px solid #d1d5db";
-    input.style.padding = "2px 6px";
-    label.replaceWith(input);
-    input.focus();
-    input.select();
+      const currentText = labelEl.textContent || "";
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = currentText;
+      input.style.width = "100%";
+      input.style.borderRadius = "8px";
+      input.style.border = "1px solid #d1d5db";
+      input.style.padding = "2px 6px";
 
-    const finishEdit = async (save) => {
-      const newText = save ? input.value.trim() : currentText;
-      const newLabel = document.createElement("label");
-      newLabel.textContent = newText || currentText;
-      newLabel.style.marginLeft = "10px";
-      newLabel.style.flex = "1";
-      newLabel.style.cursor = "text";
+      labelEl.replaceWith(input);
+      input.focus();
+      input.select();
 
-      // reattach rename listener
-      newLabel.addEventListener("dblclick", () => {
-        label.dispatchEvent(new MouseEvent("dblclick"));
+      const finishEdit = async (save) => {
+        const newText = save ? input.value.trim() : currentText;
+        const finalText = newText || currentText;
+
+        const newLabel = document.createElement("label");
+        newLabel.textContent = finalText;
+        newLabel.style.marginLeft = "10px";
+        newLabel.style.flex = "1";
+        newLabel.style.cursor = "text";
+
+        attachRename(newLabel);
+        input.replaceWith(newLabel);
+
+        if (save && newText && newText !== currentText) {
+          await supabase
+            .from("tasks")
+            .update({ task_text: newText })
+            .eq("id", task.id);
+        }
+      };
+
+      input.addEventListener("blur", () => finishEdit(true));
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          finishEdit(true);
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          finishEdit(false);
+        }
       });
-
-      input.replaceWith(newLabel);
-
-      if (save && newText && newText !== currentText) {
-        await supabase
-          .from("tasks")
-          .update({ task_text: newText })
-          .eq("id", task.id);
-      }
-    };
-
-    input.addEventListener("blur", () => finishEdit(true));
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        finishEdit(true);
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        finishEdit(false);
-      }
     });
-  });
+  }
 
+  attachRename(label);
+
+  left.appendChild(dragHandle);
   left.appendChild(checkbox);
   left.appendChild(label);
 
-  // Right side controls
+  // --- RIGHT SIDE: priority, move date, up/down, delete ---
   const controls = document.createElement("div");
   controls.className = "task-controls";
 
@@ -761,7 +684,7 @@ function renderTaskItem(task) {
     }
   });
 
-  // Move to another day (uses inline dialog, works on mobile)
+  // Move to another day
   const moveDateBtn = document.createElement("button");
   moveDateBtn.textContent = "📆";
   moveDateBtn.title = "Move to another day";
@@ -770,7 +693,7 @@ function renderTaskItem(task) {
     showMoveDateDialog(task);
   });
 
-  // Move buttons (mouse)
+  // Move up/down (mouse)
   const upBtn = document.createElement("button");
   upBtn.textContent = "↑";
   upBtn.title = "Move up";
@@ -813,6 +736,95 @@ function renderTaskItem(task) {
   div.appendChild(left);
   div.appendChild(controls);
   tasksContainer.appendChild(div);
+
+  // --- DESKTOP DRAG via handle ---
+  dragHandle.draggable = true;
+  dragHandle.addEventListener("dragstart", () => {
+    draggedTaskElement = div;
+    div.classList.add("dragging");
+  });
+  dragHandle.addEventListener("dragend", async () => {
+    draggedTaskElement = null;
+    div.classList.remove("dragging");
+    await saveTaskOrderToDatabase();
+  });
+
+  // --- MOBILE DRAG via handle (touch/pointer) ---
+  dragHandle.addEventListener("pointerdown", (e) => {
+    if (e.pointerType !== "touch") return;
+
+    draggedTaskElement = div;
+    div.classList.add("dragging");
+
+    const pointerId = e.pointerId;
+    dragHandle.setPointerCapture(pointerId);
+
+    const handleMove = (ev) => {
+      reorderTasksAtY(ev.clientY);
+    };
+
+    const handleUp = async () => {
+      dragHandle.releasePointerCapture(pointerId);
+      dragHandle.removeEventListener("pointermove", handleMove);
+      dragHandle.removeEventListener("pointerup", handleUp);
+      dragHandle.removeEventListener("pointercancel", handleUp);
+
+      draggedTaskElement = null;
+      div.classList.remove("dragging");
+      await saveTaskOrderToDatabase();
+    };
+
+    dragHandle.addEventListener("pointermove", handleMove);
+    dragHandle.addEventListener("pointerup", handleUp);
+    dragHandle.addEventListener("pointercancel", handleUp);
+  });
+
+  // --- SWIPE-TO-DELETE on the whole card (touch) ---
+  let touchStartX = null;
+  let touchCurrentX = null;
+  let isSwiping = false;
+
+  div.addEventListener(
+    "touchstart",
+    (e) => {
+      if (e.touches.length !== 1) return;
+      touchStartX = e.touches[0].clientX;
+      touchCurrentX = touchStartX;
+      isSwiping = true;
+    },
+    { passive: true }
+  );
+
+  div.addEventListener(
+    "touchmove",
+    (e) => {
+      if (!isSwiping) return;
+      touchCurrentX = e.touches[0].clientX;
+      const deltaX = touchCurrentX - touchStartX;
+
+      if (deltaX < 0) {
+        div.style.transform = `translateX(${deltaX}px)`;
+        const opacity = Math.max(0.3, 1 + deltaX / 200);
+        div.style.opacity = String(opacity);
+      }
+    },
+    { passive: true }
+  );
+
+  div.addEventListener("touchend", () => {
+    if (!isSwiping) return;
+    isSwiping = false;
+
+    const deltaX = touchCurrentX - touchStartX;
+    if (deltaX < -80) {
+      // swiped left far enough → delete
+      handleDelete(task, div);
+    } else {
+      // snap back
+      div.style.transform = "translateX(0)";
+      div.style.opacity = "1";
+    }
+  });
 }
 
 // === MANUAL ADD TASK ===
