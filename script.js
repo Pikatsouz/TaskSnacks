@@ -576,18 +576,49 @@ function renderTaskItem(task) {
     await saveTaskOrderToDatabase();
   });
 
-  // Touch / pointer support (for phones & tablets)
+    // Touch / pointer support (for phones & tablets)
   div.addEventListener("pointerdown", (e) => {
-    if (e.pointerType !== "touch") return; // only touch here
+    // We only handle touch here; mouse uses HTML5 drag
+    if (e.pointerType !== "touch") return;
 
-    draggedTaskElement = div;
-    div.classList.add("dragging");
+    let startX = e.clientX;
+    let startY = e.clientY;
+    let mode = null; // "drag" or "swipe"
+    let lastDeltaX = 0;
 
     const pointerId = e.pointerId;
     div.setPointerCapture(pointerId);
 
     const handleMove = (ev) => {
-      reorderTasksAtY(ev.clientY);
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+
+      // Decide if this gesture is drag or swipe:
+      if (!mode) {
+        if (Math.abs(dx) > 15 && Math.abs(dx) > Math.abs(dy)) {
+          mode = "swipe"; // mostly horizontal
+        } else if (Math.abs(dy) > 15 && Math.abs(dy) > Math.abs(dx)) {
+          mode = "drag";  // mostly vertical
+          draggedTaskElement = div;
+          div.classList.add("dragging");
+        } else {
+          // not enough movement yet
+          return;
+        }
+      }
+
+      if (mode === "drag") {
+        // vertical drag → reorder tasks
+        reorderTasksAtY(ev.clientY);
+      } else if (mode === "swipe") {
+        // horizontal swipe → prepare delete
+        lastDeltaX = dx;
+        if (dx < 0) {
+          div.style.transform = `translateX(${dx}px)`;
+          const opacity = Math.max(0.3, 1 + dx / 200);
+          div.style.opacity = String(opacity);
+        }
+      }
     };
 
     const handleUp = async () => {
@@ -596,16 +627,30 @@ function renderTaskItem(task) {
       div.removeEventListener("pointerup", handleUp);
       div.removeEventListener("pointercancel", handleUp);
 
-      draggedTaskElement = null;
-      div.classList.remove("dragging");
-      await saveTaskOrderToDatabase();
+      if (mode === "drag") {
+        // finish drag → save order
+        draggedTaskElement = null;
+        div.classList.remove("dragging");
+        await saveTaskOrderToDatabase();
+      } else if (mode === "swipe") {
+        // finish swipe → delete or snap back
+        if (lastDeltaX < -80) {
+          // swiped far enough left → delete with undo
+          handleDelete(task, div);
+        } else {
+          // not far enough → snap back
+          div.style.transform = "translateX(0)";
+          div.style.opacity = "1";
+        }
+      } else {
+        // no real move → tap only, nothing to do
+      }
     };
 
     div.addEventListener("pointermove", handleMove);
     div.addEventListener("pointerup", handleUp);
     div.addEventListener("pointercancel", handleUp);
   });
-
   // Left side (checkbox + text)
   const left = document.createElement("div");
   left.style.display = "flex";
