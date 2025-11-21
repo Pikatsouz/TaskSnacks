@@ -750,8 +750,12 @@ function renderTaskItem(task) {
   });
 
   // --- MOBILE DRAG via handle (touch/pointer) ---
+    // --- MOBILE DRAG via handle (touch/pointer) ---
   dragHandle.addEventListener("pointerdown", (e) => {
     if (e.pointerType !== "touch") return;
+
+    // 🔐 stop text selection / long-press behaviour
+    e.preventDefault();
 
     draggedTaskElement = div;
     div.classList.add("dragging");
