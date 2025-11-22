@@ -176,22 +176,43 @@ function updateAuthUI() {
   const hasManual = !!manualAddSection;
 
   if (currentUser) {
+    // Logged in
     authStatus.textContent = `Logged in as ${currentUser.email}`;
-    logoutBtn.style.display = "inline-block";
-    loginBtn.style.display = "none";
+
+    // Hide email + password + Sign up + Log in
+    emailInput.style.display = "none";
+    passwordInput.style.display = "none";
     signupBtn.style.display = "none";
+    loginBtn.style.display = "none";
+
+    // Show only logout
+    logoutBtn.style.display = "inline-block";
+
+    // Show main UI
     if (hasCalendar) calendarSection.style.display = "block";
     if (hasSort) sortSection.style.display = "block";
     if (hasManual) manualAddSection.style.display = "flex";
+
     organizeBtn.disabled = false;
+
   } else {
+    // Logged out
     authStatus.textContent = "Not logged in.";
-    logoutBtn.style.display = "none";
-    loginBtn.style.display = "inline-block";
+
+    // Show login/signup UI
+    emailInput.style.display = "inline-block";
+    passwordInput.style.display = "inline-block";
     signupBtn.style.display = "inline-block";
+    loginBtn.style.display = "inline-block";
+
+    // Hide logout
+    logoutBtn.style.display = "none";
+
+    // Hide rest of UI
     if (hasCalendar) calendarSection.style.display = "none";
     if (hasSort) sortSection.style.display = "none";
     if (hasManual) manualAddSection.style.display = "none";
+
     organizeBtn.disabled = true;
     tasksContainer.innerHTML = "";
     funFactContainer.textContent = "";
