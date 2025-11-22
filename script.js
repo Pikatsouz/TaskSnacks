@@ -749,39 +749,38 @@ function renderTaskItem(task) {
     await saveTaskOrderToDatabase();
   });
 
-  // --- MOBILE DRAG via handle (touch/pointer) ---
-    // --- MOBILE DRAG via handle (touch/pointer) ---
-  dragHandle.addEventListener("pointerdown", (e) => {
-    if (e.pointerType !== "touch") return;
+    // --- MOBILE DRAG via handle (touch) ---
+  dragHandle.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1) return;
 
-    // 🔐 stop text selection / long-press behaviour
-    e.preventDefault();
+    e.preventDefault(); // stop text selection / long-press
+    const touch = e.touches[0];
 
     draggedTaskElement = div;
     div.classList.add("dragging");
 
-    const pointerId = e.pointerId;
-    dragHandle.setPointerCapture(pointerId);
-
     const handleMove = (ev) => {
-      reorderTasksAtY(ev.clientY);
+      const t = ev.touches[0] || ev.changedTouches[0];
+      if (!t) return;
+      // reorder list based on finger Y position
+      reorderTasksAtY(t.clientY);
+      ev.preventDefault(); // prevent scrolling while dragging
     };
 
-    const handleUp = async () => {
-      dragHandle.releasePointerCapture(pointerId);
-      dragHandle.removeEventListener("pointermove", handleMove);
-      dragHandle.removeEventListener("pointerup", handleUp);
-      dragHandle.removeEventListener("pointercancel", handleUp);
+    const handleEnd = async (ev) => {
+      document.removeEventListener("touchmove", handleMove);
+      document.removeEventListener("touchend", handleEnd);
+      document.removeEventListener("touchcancel", handleEnd);
 
       draggedTaskElement = null;
       div.classList.remove("dragging");
       await saveTaskOrderToDatabase();
     };
 
-    dragHandle.addEventListener("pointermove", handleMove);
-    dragHandle.addEventListener("pointerup", handleUp);
-    dragHandle.addEventListener("pointercancel", handleUp);
-  });
+    document.addEventListener("touchmove", handleMove, { passive: false });
+    document.addEventListener("touchend", handleEnd);
+    document.addEventListener("touchcancel", handleEnd);
+  });  
 
   // --- SWIPE-TO-DELETE on the whole card (touch) ---
   let touchStartX = null;
