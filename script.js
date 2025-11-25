@@ -243,7 +243,7 @@ signupBtn.addEventListener("click", async () => {
       return alert("Sign up error: " + error.message);
     }
 
-    // 🔹 analytics: signup success (no email content)
+    // analytics: signup success (no email content)
     track("ts_signup_success");
 
     alert("Check your email to confirm your account.");
@@ -268,7 +268,7 @@ loginBtn.addEventListener("click", async () => {
   await loadTasksForSelectedDate();
   await renderCalendar();
 
-  // 🔹 analytics: login success
+  //  analytics: login success
   track("ts_login_success");
 });
 
@@ -292,7 +292,7 @@ if (sortMode) {
   sortMode.addEventListener("change", () => {
   if (currentUser) loadTasksForSelectedDate();
 
-  // 🔹 analytics: sort changed
+  //  analytics: sort changed
   track("ts_sort_mode_changed", {
     mode: sortMode.value   // "created" or "priority"
   });
@@ -576,7 +576,7 @@ function showMoveDateDialog(task) {
   .update({ task_date: newDate, sort_index: newIndex })
   .eq("id", task.id);
 
-// 🔹 analytics: moved between days
+//  analytics: moved between days
 track("ts_task_moved_day", {
   from: task.task_date,
   to: newDate,
@@ -639,7 +639,7 @@ function renderTaskItem(task) {
       }
     }
 
-    // 🔹 analytics: completion toggle
+    //  analytics: completion toggle
     track("ts_task_completed_toggle", {
       completed: checkbox.checked,
       priority: task.priority,
@@ -951,7 +951,7 @@ organizeBtn.addEventListener("click", async () => {
   funFactContainer.textContent = "";
   hideUndoBar();
 
-  // 🔹 analytics: user used AI
+  //  analytics: user used AI
   track("ts_organize_clicked", {
     text_length: dumpText.length,   // just length, not content
   });
@@ -996,7 +996,7 @@ organizeBtn.addEventListener("click", async () => {
           .single();
 
         if (!error && inserted) {
-          // 🔹 analytics: AI task created
+          //  analytics: AI task created
           track("ts_task_created", {
             source: "ai",
             priority: priority
