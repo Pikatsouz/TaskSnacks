@@ -1149,52 +1149,79 @@ if (changePasswordBtn) {
   });
 }
 
-// --- DELETE ACCOUNT (placeholder) ---
+// DELETE ACCOUNT POPUP LOGIC
+const deleteModal = document.getElementById("deleteModal");
+const deleteCloseBtn = document.getElementById("deleteCloseBtn");
+const deleteConfirmInput = document.getElementById("deleteConfirmInput");
+const finalDeleteBtn = document.getElementById("finalDeleteBtn");
+const goodbyeModal = document.getElementById("goodbyeModal");
+
 if (deleteAccountBtn) {
-  deleteAccountBtn.addEventListener("click", async () => {
-    if (!currentUser) {
-      alert("Please log in first.");
+  deleteAccountBtn.addEventListener("click", () => {
+    deleteConfirmInput.value = "";
+    finalDeleteBtn.disabled = true;
+    finalDeleteBtn.classList.remove("enabled");
+    deleteModal.classList.remove("hidden");
+  });
+}
+
+deleteCloseBtn.addEventListener("click", () => {
+  deleteModal.classList.add("hidden");
+});
+
+deleteConfirmInput.addEventListener("input", () => {
+  if (deleteConfirmInput.value.trim() === "DELETE") {
+    finalDeleteBtn.disabled = false;
+    finalDeleteBtn.classList.add("enabled");
+  } else {
+    finalDeleteBtn.disabled = true;
+    finalDeleteBtn.classList.remove("enabled");
+  }
+});
+
+finalDeleteBtn.addEventListener("click", async () => {
+  if (!currentUser) return alert("Not logged in.");
+
+  try {
+    const { data: session } = await supabase.auth.getSession();
+    const accessToken = session?.session?.access_token;
+
+    const response = await fetch(
+      "https://fxexewdnbmiybbutcnyv.supabase.co/functions/v1/delete-user",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        }
+      }
+    );
+
+    deleteModal.classList.add("hidden");
+
+    if (!response.ok) {
+      alert("Failed to delete account.");
       return;
     }
 
-    const confirm1 = confirm(
-      "Are you sure you want to permanently delete your account and ALL your tasks? This cannot be undone."
-    );
-    if (!confirm1) return;
+    // Sign out locally
+    await supabase.auth.signOut();
+    currentUser = null;
+    updateAuthUI();
 
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      const accessToken = session?.session?.access_token;
+    // Show goodbye popup
+    goodbyeModal.classList.remove("hidden");
 
-      const response = await fetch(
-        "https://fxexewdnbmiybbutcnyv.supabase.co/functions/v1/delete-user",
-        {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          }
-        }
-      );
+    // Auto-hide after 2.5 sec
+    setTimeout(() => {
+      goodbyeModal.classList.add("hidden");
+    }, 2500);
 
-      if (!response.ok) {
-        const text = await response.text();
-        alert("Error deleting account: " + text);
-        return;
-      }
-
-      alert("Your account has been permanently deleted.");
-      
-      await supabase.auth.signOut();
-      currentUser = null;
-      updateAuthUI();
-
-    } catch (err) {
-      console.error(err);
-      alert("Unexpected error while deleting account.");
-    }
-  });
-}
+  } catch (err) {
+    console.error(err);
+    alert("Unexpected error deleting account.");
+  }
+});
 // --- SET NEW PASSWORD (after clicking email link) ---
 if (setNewPasswordBtn && passwordResetSection) {
   setNewPasswordBtn.addEventListener("click", async () => {
