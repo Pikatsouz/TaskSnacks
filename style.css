@@ -23,15 +23,15 @@ body {
   margin: 0;
   padding: 0;
 
-  /* Softer gradient, fades to white – no blue strip at the bottom */
   background: linear-gradient(
     180deg,
     var(--primary-soft) 0%,
-    var(--primary) 30%,
-    #ffffff 55%,
+    var(--primary) 50%,
     #ffffff 100%
   );
 
+  background-attachment: fixed; /* keeps gradient tall even on short pages */
+  min-height: 100vh; /* ensures full-height gradient */
   color: var(--text-main);
 }
 .task-drag-handle {
