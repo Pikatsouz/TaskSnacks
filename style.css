@@ -659,3 +659,71 @@ button#organizeBtn:disabled {
 .danger-btn:hover {
   filter: brightness(0.95);
 }
+
+/* Top bar right side (refresh + settings) */
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Wrap for the gear and dropdown, so dropdown can be positioned */
+.settings-wrapper {
+  position: relative;
+}
+
+/* Small round gear button */
+.settings-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.15);
+}
+
+/* Dropdown menu */
+.settings-menu {
+  position: absolute;
+  right: 0;
+  top: 38px;
+  min-width: 180px;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
+  padding: 6px 0;
+  z-index: 90;
+}
+
+.settings-menu.hidden {
+  display: none;
+}
+
+.settings-item {
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.settings-item:hover {
+  background: #f3f4f6;
+}
+
+/* Red delete item */
+.settings-item.danger-item {
+  color: #b91c1c;
+}
+
+.settings-item.danger-item:hover {
+  background: #fee2e2;
+}
