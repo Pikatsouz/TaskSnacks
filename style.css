@@ -599,3 +599,27 @@ button#organizeBtn:disabled {
 .modal-close:hover {
   color: #111827;
 }
+
+.logged-out-info {
+  max-width: 620px;
+  margin: 32px auto 60px;
+  padding: 24px 20px;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 22px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+  text-align: left;
+}
+
+.logged-out-info h2 {
+  margin-top: 0;
+  margin-bottom: 14px;
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.logged-out-info p {
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin-bottom: 12px;
+}
