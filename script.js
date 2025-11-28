@@ -6,16 +6,18 @@ const supabaseUrl = "https://fxexewdnbmiybbutcnyv.supabase.co";
 const supabaseKey =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4ZXhld2RuYm1peWJidXRjbnl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NTA2MjQsImV4cCI6MjA3OTEyNjYyNH0.E_UQHGX4zeLUajwMIlTRchsCMnr99__cDESOHflp8cc";
 
+// Supabase client
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
 // ---- ANALYTICS (PostHog) ----
-// === ANALYTICS TOGGLE ===
+// toggle: set to true when you want to start tracking
 const ENABLE_TRACKING = false;
 function track(eventName, props = {}) {
+  if (!ENABLE_TRACKING) return;
   if (window.posthog && typeof window.posthog.capture === "function") {
     window.posthog.capture(eventName, props);
   }
 }
-// Supabase client
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 // --- Date helper (LOCAL date, fixes 1-day ahead bug) ---
 function formatDateLocal(d) {
@@ -106,6 +108,16 @@ const manualAddSection = document.getElementById("manualAddSection");
 const manualTaskInput = document.getElementById("manualTaskInput");
 const manualAddBtn = document.getElementById("manualAddBtn");
 
+const appContent = document.getElementById("appContent");
+const loggedOutInfo = document.getElementById("loggedOutInfo");
+const refreshBtn = document.getElementById("refreshBtn");
+
+// About modal refs
+const aboutBtn = document.getElementById("aboutBtn");
+const aboutModal = document.getElementById("aboutModal");
+const aboutCloseBtn = document.getElementById("aboutCloseBtn");
+const aboutBackdrop = document.getElementById("aboutBackdrop");
+
 // === STATE ===
 let currentUser = null;
 let currentMonthDate = new Date(); // which month is shown in the calendar
@@ -182,31 +194,46 @@ function updateAuthUI() {
   const hasCalendar = !!calendarSection;
   const hasSort = !!sortSection;
   const hasManual = !!manualAddSection;
-  const appContent = document.getElementById("appContent");
 
   if (currentUser) {
+    // Logged IN
     authStatus.textContent = `Logged in as ${currentUser.email}`;
+
+    // Show only Log out button
     logoutBtn.style.display = "inline-block";
     loginBtn.style.display = "none";
     signupBtn.style.display = "none";
+
+    // Hide email/password fields
+    emailInput.style.display = "none";
+    passwordInput.style.display = "none";
+
+    // Hide logged-out info
+    if (loggedOutInfo) loggedOutInfo.style.display = "none";
+
+    // Show app content
+    if (appContent) appContent.style.display = "block";
 
     if (hasCalendar) calendarSection.style.display = "block";
     if (hasSort) sortSection.style.display = "block";
     if (hasManual) manualAddSection.style.display = "flex";
     organizeBtn.disabled = false;
-
-    if (appContent) appContent.style.display = "block";
   } else {
-authStatus.textContent = "Not logged in.";
+    // Logged OUT
+    authStatus.textContent = "Not logged in.";
 
-const loggedOutInfo = document.getElementById("loggedOutInfo");
-if (loggedOutInfo) loggedOutInfo.style.display = "none";
-    
-const loggedOutInfo = document.getElementById("loggedOutInfo");
-if (loggedOutInfo) loggedOutInfo.style.display = "block";
+    // Show login/signup and inputs
     logoutBtn.style.display = "none";
     loginBtn.style.display = "inline-block";
     signupBtn.style.display = "inline-block";
+    emailInput.style.display = "inline-block";
+    passwordInput.style.display = "inline-block";
+
+    // Show logged-out info
+    if (loggedOutInfo) loggedOutInfo.style.display = "block";
+
+    // Hide app content
+    if (appContent) appContent.style.display = "none";
 
     if (hasCalendar) calendarSection.style.display = "none";
     if (hasSort) sortSection.style.display = "none";
@@ -214,11 +241,10 @@ if (loggedOutInfo) loggedOutInfo.style.display = "block";
     organizeBtn.disabled = true;
     tasksContainer.innerHTML = "";
     funFactContainer.textContent = "";
-
-    if (appContent) appContent.style.display = "none";
   }
 }
 
+// === AUTH BUTTON HANDLERS ===
 signupBtn.addEventListener("click", async () => {
   const email = emailInput.value.trim();
   const password = passwordInput.value.trim();
@@ -238,15 +264,14 @@ signupBtn.addEventListener("click", async () => {
       return alert("Sign up error: " + error.message);
     }
 
-    // analytics: signup success (no email content)
     track("ts_signup_success");
-
     alert("Check your email to confirm your account.");
   } catch (e) {
     console.error("Sign up threw exception:", e);
     alert("Sign up error: " + e.message);
   }
 });
+
 loginBtn.addEventListener("click", async () => {
   const email = emailInput.value.trim();
   const password = passwordInput.value.trim();
@@ -257,13 +282,13 @@ loginBtn.addEventListener("click", async () => {
     password,
   });
   if (error) return alert("Login error: " + error.message);
+
   currentUser = data.user;
   updateAuthUI();
   setToday();
   await loadTasksForSelectedDate();
   await renderCalendar();
 
-  //  analytics: login success
   track("ts_login_success");
 });
 
@@ -272,9 +297,14 @@ logoutBtn.addEventListener("click", async () => {
   currentUser = null;
   updateAuthUI();
 });
-document.getElementById("refreshBtn").addEventListener("click", () => {
-  location.reload();
-});
+
+// Refresh button
+if (refreshBtn) {
+  refreshBtn.addEventListener("click", () => {
+    location.reload();
+  });
+}
+
 // === DATE & CALENDAR HANDLING ===
 function setToday() {
   const today = new Date();
@@ -285,13 +315,12 @@ function setToday() {
 
 if (sortMode) {
   sortMode.addEventListener("change", () => {
-  if (currentUser) loadTasksForSelectedDate();
+    if (currentUser) loadTasksForSelectedDate();
 
-  //  analytics: sort changed
-  track("ts_sort_mode_changed", {
-    mode: sortMode.value   // "created" or "priority"
+    track("ts_sort_mode_changed", {
+      mode: sortMode.value
+    });
   });
-});
 }
 
 prevMonthBtn.addEventListener("click", () => {
@@ -465,7 +494,7 @@ async function saveTaskOrderToDatabase() {
   try {
     await Promise.all(updates);
     if (sortMode) {
-      sortMode.value = "created"; // “My order”
+      sortMode.value = "created"; // treat as “my order”
     }
   } catch (e) {
     console.error("Error saving order:", e);
@@ -490,7 +519,6 @@ async function handleDelete(task, div) {
 function showMoveDateDialog(task) {
   if (!currentUser) return;
 
-  // overlay
   const overlay = document.createElement("div");
   overlay.style.position = "fixed";
   overlay.style.left = "0";
@@ -567,19 +595,17 @@ function showMoveDateDialog(task) {
       const newIndex = existing ? existing.length : 0;
 
       await supabase
-  .from("tasks")
-  .update({ task_date: newDate, sort_index: newIndex })
-  .eq("id", task.id);
+        .from("tasks")
+        .update({ task_date: newDate, sort_index: newIndex })
+        .eq("id", task.id);
 
-//  analytics: moved between days
-track("ts_task_moved_day", {
-  from: task.task_date,
-  to: newDate,
-});
+      track("ts_task_moved_day", {
+        from: task.task_date,
+        to: newDate,
+      });
 
-// Reload current day and calendar
-await loadTasksForSelectedDate();
-await renderCalendar();
+      await loadTasksForSelectedDate();
+      await renderCalendar();
     } catch (err) {
       console.error("Move task date error:", err);
       alert("Could not move task.");
@@ -596,7 +622,6 @@ await renderCalendar();
   overlay.appendChild(box);
   document.body.appendChild(overlay);
 
-  // focus for mobile keyboard
   dateInput.focus();
 }
 
@@ -634,7 +659,6 @@ function renderTaskItem(task) {
       }
     }
 
-    //  analytics: completion toggle
     track("ts_task_completed_toggle", {
       completed: checkbox.checked,
       priority: task.priority,
@@ -799,7 +823,7 @@ function renderTaskItem(task) {
     await saveTaskOrderToDatabase();
   });
 
-    // --- MOBILE DRAG via handle (touch) ---
+  // --- MOBILE DRAG via handle (touch) ---
   dragHandle.addEventListener("touchstart", (e) => {
     if (e.touches.length !== 1) return;
 
@@ -812,9 +836,8 @@ function renderTaskItem(task) {
     const handleMove = (ev) => {
       const t = ev.touches[0] || ev.changedTouches[0];
       if (!t) return;
-      // reorder list based on finger Y position
       reorderTasksAtY(t.clientY);
-      ev.preventDefault(); // prevent scrolling while dragging
+      ev.preventDefault();
     };
 
     const handleEnd = async (ev) => {
@@ -830,7 +853,7 @@ function renderTaskItem(task) {
     document.addEventListener("touchmove", handleMove, { passive: false });
     document.addEventListener("touchend", handleEnd);
     document.addEventListener("touchcancel", handleEnd);
-  });  
+  });
 
   // --- SWIPE-TO-DELETE on the whole card (touch) ---
   let touchStartX = null;
@@ -870,10 +893,8 @@ function renderTaskItem(task) {
 
     const deltaX = touchCurrentX - touchStartX;
     if (deltaX < -80) {
-      // swiped left far enough → delete
       handleDelete(task, div);
     } else {
-      // snap back
       div.style.transform = "translateX(0)";
       div.style.opacity = "1";
     }
@@ -894,7 +915,7 @@ async function addManualTask() {
   ];
   const baseIndex = existingItems.length;
 
- const { data, error } = await supabase
+  const { data, error } = await supabase
     .from("tasks")
     .insert({
       user_id: currentUser.id,
@@ -913,7 +934,6 @@ async function addManualTask() {
     return;
   }
 
-  // 🔹 analytics: manual task created
   track("ts_task_created", {
     source: "manual"
   });
@@ -946,9 +966,8 @@ organizeBtn.addEventListener("click", async () => {
   funFactContainer.textContent = "";
   hideUndoBar();
 
-  //  analytics: user used AI
   track("ts_organize_clicked", {
-    text_length: dumpText.length,   // just length, not content
+    text_length: dumpText.length,
   });
 
   try {
@@ -977,7 +996,7 @@ organizeBtn.addEventListener("click", async () => {
         const priority = match[1].toLowerCase();
         const text = match[2];
 
- const { data: inserted, error } = await supabase
+        const { data: inserted, error } = await supabase
           .from("tasks")
           .insert({
             user_id: currentUser.id,
@@ -991,7 +1010,6 @@ organizeBtn.addEventListener("click", async () => {
           .single();
 
         if (!error && inserted) {
-          //  analytics: AI task created
           track("ts_task_created", {
             source: "ai",
             priority: priority
@@ -1014,12 +1032,8 @@ organizeBtn.addEventListener("click", async () => {
     brainDump.value = "";
   }
 });
-// === ABOUT MODAL LOGIC ===
-const aboutBtn = document.getElementById("aboutBtn");
-const aboutModal = document.getElementById("aboutModal");
-const aboutCloseBtn = document.getElementById("aboutCloseBtn");
-const aboutBackdrop = document.getElementById("aboutBackdrop");
 
+// === ABOUT MODAL LOGIC ===
 if (aboutBtn && aboutModal) {
   aboutBtn.addEventListener("click", () => {
     aboutModal.classList.remove("hidden");
@@ -1037,6 +1051,7 @@ if (aboutBackdrop) {
     aboutModal.classList.add("hidden");
   });
 }
+
 // === INIT ===
 checkSession();
 track("ts_page_loaded");
