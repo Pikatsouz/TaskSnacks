@@ -18,7 +18,7 @@ function track(eventName, props = {}) {
   }
 }
 
-// --- Date helper (LOCAL date) ---
+// --- Date helper (LOCAL date, fixes 1-day ahead bug) ---
 function formatDateLocal(d) {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -108,11 +108,19 @@ const appContent = document.getElementById("appContent");
 const loggedOutInfo = document.getElementById("loggedOutInfo");
 const refreshBtn = document.getElementById("refreshBtn");
 
+// Settings + delete modal
 const settingsBtn = document.getElementById("settingsBtn");
 const settingsMenu = document.getElementById("settingsMenu");
 const changePasswordBtn = document.getElementById("changePasswordBtn");
 const deleteAccountBtn = document.getElementById("deleteAccountBtn");
 
+const deleteModal = document.getElementById("deleteModal");
+const deleteCloseBtn = document.getElementById("deleteCloseBtn");
+const deleteConfirmInput = document.getElementById("deleteConfirmInput");
+const finalDeleteBtn = document.getElementById("finalDeleteBtn");
+const goodbyeModal = document.getElementById("goodbyeModal");
+
+// Password reset section
 const passwordResetSection = document.getElementById("passwordResetSection");
 const newPasswordInput = document.getElementById("newPasswordInput");
 const setNewPasswordBtn = document.getElementById("setNewPasswordBtn");
@@ -131,7 +139,7 @@ let lastDeletedTask = null;
 let undoTimeoutId = null;
 let isRecoveryMode = false;
 
-// === SETTINGS DROPDOWN TOGGLE ===
+// === SETTINGS DROPDOWN ===
 if (settingsBtn && settingsMenu) {
   settingsBtn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -146,23 +154,6 @@ if (settingsBtn && settingsMenu) {
     ) {
       settingsMenu.classList.add("hidden");
     }
-  });
-}
-
-// === ABOUT MODAL ===
-if (aboutBtn && aboutModal) {
-  aboutBtn.addEventListener("click", () => {
-    aboutModal.classList.remove("hidden");
-  });
-}
-if (aboutCloseBtn) {
-  aboutCloseBtn.addEventListener("click", () => {
-    aboutModal.classList.add("hidden");
-  });
-}
-if (aboutBackdrop) {
-  aboutBackdrop.addEventListener("click", () => {
-    aboutModal.classList.add("hidden");
   });
 }
 
@@ -219,32 +210,24 @@ function hideUndoBar() {
   if (undoBar) undoBar.classList.remove("visible");
 }
 
-// === PASSWORD RECOVERY LISTENER (Supabase-recommended) ===
-supabase.auth.onAuthStateChange((event, session) => {
-  console.log("Auth event:", event);
-  if (event === "PASSWORD_RECOVERY") {
-    // User came from the email reset link
-    isRecoveryMode = true;
-    currentUser = session?.user ?? null;
-
-    if (passwordResetSection) {
-      passwordResetSection.style.display = "block";
-    }
-    if (authStatus) {
-      authStatus.textContent = "Set a new password for your TaskSnacks account.";
-    }
-
-    updateAuthUI();
-  }
-});
-
 // === AUTH LOGIC ===
 async function checkSession() {
-  const { data, error } = await supabase.auth.getUser();
-  if (error) {
-    console.error("getUser error:", error);
+  try {
+    // Use session first (more reliable for persistence)
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session || null;
+
+    if (session) {
+      const { data: userData } = await supabase.auth.getUser();
+      currentUser = userData?.user || null;
+    } else {
+      currentUser = null;
+    }
+  } catch (e) {
+    console.error("checkSession error:", e);
+    currentUser = null;
   }
-  currentUser = data?.user || null;
+
   updateAuthUI();
 
   if (currentUser && !isRecoveryMode) {
@@ -259,46 +242,16 @@ function updateAuthUI() {
   const hasSort = !!sortSection;
   const hasManual = !!manualAddSection;
 
-  // 1) Recovery mode UI: show only reset box
-  if (isRecoveryMode) {
-    if (passwordResetSection) passwordResetSection.style.display = "block";
-
-    if (authStatus) {
-      authStatus.textContent =
-        "Set a new password for your TaskSnacks account.";
-    }
-
-    // Hide main app + marketing while in recovery
-    if (appContent) appContent.style.display = "none";
-    if (loggedOutInfo) loggedOutInfo.style.display = "none";
-    if (hasCalendar) calendarSection.style.display = "none";
-    if (hasSort) sortSection.style.display = "none";
-    if (hasManual) manualAddSection.style.display = "none";
-    if (organizeBtn) organizeBtn.disabled = true;
-
-    // For safety, hide auth controls (they're not needed here)
-    if (logoutBtn) logoutBtn.style.display = "none";
-    if (loginBtn) loginBtn.style.display = "none";
-    if (signupBtn) signupBtn.style.display = "none";
-    if (emailInput) emailInput.style.display = "none";
-    if (passwordInput) passwordInput.style.display = "none";
-
-    if (settingsMenu) settingsMenu.classList.add("hidden");
-    return;
-  }
-
-  // 2) Normal logged-in / logged-out UI
   if (currentUser) {
     authStatus.textContent = `Logged in as ${currentUser.email}`;
     logoutBtn.style.display = "inline-block";
     loginBtn.style.display = "none";
     signupBtn.style.display = "none";
 
-    // Hide email/password inputs when logged in
+    // hide login inputs when logged in
     emailInput.style.display = "none";
     passwordInput.style.display = "none";
 
-    if (passwordResetSection) passwordResetSection.style.display = "none";
     if (loggedOutInfo) loggedOutInfo.style.display = "none";
     if (hasCalendar) calendarSection.style.display = "block";
     if (hasSort) sortSection.style.display = "block";
@@ -311,10 +264,10 @@ function updateAuthUI() {
     loginBtn.style.display = "inline-block";
     signupBtn.style.display = "inline-block";
 
+    // show login inputs
     emailInput.style.display = "inline-block";
     passwordInput.style.display = "inline-block";
 
-    if (passwordResetSection) passwordResetSection.style.display = "none";
     if (loggedOutInfo) loggedOutInfo.style.display = "block";
     if (hasCalendar) calendarSection.style.display = "none";
     if (hasSort) sortSection.style.display = "none";
@@ -325,10 +278,15 @@ function updateAuthUI() {
     if (appContent) appContent.style.display = "none";
   }
 
+  // Reset password section visibility
+  if (passwordResetSection) {
+    passwordResetSection.style.display = isRecoveryMode ? "block" : "none";
+  }
+
   if (settingsMenu) settingsMenu.classList.add("hidden");
 }
 
-// === AUTH BUTTON HANDLERS ===
+// === SIGNUP / LOGIN / LOGOUT ===
 signupBtn.addEventListener("click", async () => {
   const email = emailInput.value.trim();
   const password = passwordInput.value.trim();
@@ -339,19 +297,19 @@ signupBtn.addEventListener("click", async () => {
       email,
       password,
       options: {
-        emailRedirectTo: "https://tasksnacks.github.io/TaskSnacks/"
+        emailRedirectTo: "https://tasksnacks.github.io/TaskSnacks/?type=recovery"
       }
     });
 
     if (error) {
-      console.error("Sign up error object:", error);
+      console.error("Sign up error:", error);
       return alert("Sign up error: " + error.message);
     }
 
     track("ts_signup_success");
     alert("Check your email to confirm your account.");
   } catch (e) {
-    console.error("Sign up threw exception:", e);
+    console.error("Sign up exception:", e);
     alert("Sign up error: " + e.message);
   }
 });
@@ -365,6 +323,7 @@ loginBtn.addEventListener("click", async () => {
     email,
     password
   });
+
   if (error) return alert("Login error: " + error.message);
 
   currentUser = data.user;
@@ -391,6 +350,100 @@ if (refreshBtn) {
   });
 }
 
+// === PASSWORD RESET FLOW ===
+
+// 1. Change password: send email
+if (changePasswordBtn) {
+  changePasswordBtn.addEventListener("click", async () => {
+    if (!currentUser) {
+      alert("Please log in first.");
+      return;
+    }
+
+    const confirmChange = confirm(
+      "We will send a password reset email to your address. Continue?"
+    );
+    if (!confirmChange) return;
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        currentUser.email,
+        {
+          redirectTo: "https://tasksnacks.github.io/TaskSnacks/?type=recovery"
+        }
+      );
+
+      if (error) {
+        console.error("Reset password error:", error);
+        alert("Could not send reset email: " + error.message);
+        return;
+      }
+
+      alert("Password reset email sent. Check your inbox.");
+    } catch (err) {
+      console.error("Reset password exception:", err);
+      alert("Something went wrong.");
+    } finally {
+      if (settingsMenu) settingsMenu.classList.add("hidden");
+    }
+  });
+}
+
+// 2. Detect recovery mode from URL
+function handleRecoveryFromURL() {
+  const url = new URL(window.location.href);
+
+  const typeFromQuery = url.searchParams.get("type");
+  let type = typeFromQuery;
+
+  // also support hash style, just in case
+  if (!type) {
+    const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
+    type = hashParams.get("type");
+  }
+
+  if (type === "recovery") {
+    isRecoveryMode = true;
+    if (passwordResetSection) passwordResetSection.style.display = "block";
+    if (authStatus) {
+      authStatus.textContent =
+        "You arrived from a password reset link. Set a new password below.";
+    }
+  } else {
+    isRecoveryMode = false;
+  }
+}
+
+// 3. Handle "Update password" button
+if (setNewPasswordBtn) {
+  setNewPasswordBtn.addEventListener("click", async () => {
+    const newPass = newPasswordInput.value.trim();
+    if (!newPass) {
+      alert("Please type a new password.");
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPass
+      });
+
+      if (error) {
+        console.error("Update password error:", error);
+        alert("Could not update password: " + error.message);
+        return;
+      }
+
+      alert("Password updated! You can now use it to log in.");
+      isRecoveryMode = false;
+      if (passwordResetSection) passwordResetSection.style.display = "none";
+    } catch (err) {
+      console.error("Update password exception:", err);
+      alert("Something went wrong.");
+    }
+  });
+}
+
 // === DATE & CALENDAR HANDLING ===
 function setToday() {
   const today = new Date();
@@ -403,9 +456,7 @@ if (sortMode) {
   sortMode.addEventListener("change", () => {
     if (currentUser) loadTasksForSelectedDate();
 
-    track("ts_sort_mode_changed", {
-      mode: sortMode.value
-    });
+    track("ts_sort_mode_changed", { mode: sortMode.value });
   });
 }
 
@@ -526,9 +577,7 @@ async function loadTasksForSelectedDate() {
     );
   }
 
-  tasks.forEach((task) => {
-    renderTaskItem(task);
-  });
+  tasks.forEach((task) => renderTaskItem(task));
 
   renderCalendar();
 }
@@ -572,15 +621,12 @@ async function saveTaskOrderToDatabase() {
   const items = [...tasksContainer.querySelectorAll(".task-item")];
   const updates = items.map((item, index) => {
     const id = item.dataset.taskId;
-    return supabase
-      .from("tasks")
-      .update({ sort_index: index })
-      .eq("id", id);
+    return supabase.from("tasks").update({ sort_index: index }).eq("id", id);
   });
   try {
     await Promise.all(updates);
     if (sortMode) {
-      sortMode.value = "created"; // treat as “my order”
+      sortMode.value = "created"; // treat as "my order"
     }
   } catch (e) {
     console.error("Error saving order:", e);
@@ -737,9 +783,7 @@ function renderTaskItem(task) {
 
     if (checkbox.checked) {
       const fact = getRandomFunFact();
-      if (fact) {
-        showFunFact(fact);
-      }
+      if (fact) showFunFact(fact);
     }
 
     track("ts_task_completed_toggle", {
@@ -900,10 +944,9 @@ function renderTaskItem(task) {
     await saveTaskOrderToDatabase();
   });
 
-  // Mobile drag via touch
+  // Mobile drag
   dragHandle.addEventListener("touchstart", (e) => {
     if (e.touches.length !== 1) return;
-
     e.preventDefault();
     const touch = e.touches[0];
 
@@ -1011,9 +1054,7 @@ async function addManualTask() {
     return;
   }
 
-  track("ts_task_created", {
-    source: "manual"
-  });
+  track("ts_task_created", { source: "manual" });
 
   renderTaskItem(data);
   manualTaskInput.value = "";
@@ -1110,167 +1151,101 @@ organizeBtn.addEventListener("click", async () => {
   }
 });
 
-// --- CHANGE PASSWORD (send reset email) ---
-if (changePasswordBtn) {
-  changePasswordBtn.addEventListener("click", async () => {
+// === ABOUT MODAL LOGIC ===
+if (aboutBtn && aboutModal) {
+  aboutBtn.addEventListener("click", () => {
+    aboutModal.classList.remove("hidden");
+  });
+}
+
+if (aboutCloseBtn) {
+  aboutCloseBtn.addEventListener("click", () => {
+    aboutModal.classList.add("hidden");
+  });
+}
+
+if (aboutBackdrop) {
+  aboutBackdrop.addEventListener("click", () => {
+    aboutModal.classList.add("hidden");
+  });
+}
+
+// === DELETE ACCOUNT FLOW (with "DELETE" confirm + goodbye popup) ===
+if (deleteAccountBtn && deleteModal && finalDeleteBtn && deleteConfirmInput) {
+  deleteAccountBtn.addEventListener("click", () => {
     if (!currentUser) {
       alert("Please log in first.");
       return;
     }
-
-    const confirmChange = confirm(
-      `We will send a password reset email to ${currentUser.email}. Continue?`
-    );
-    if (!confirmChange) return;
-
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        currentUser.email,
-        {
-          redirectTo: "https://tasksnacks.github.io/TaskSnacks/"
-        }
-      );
-
-      if (error) {
-        console.error("Reset password error:", error);
-        alert("Could not send reset email: " + error.message);
-        return;
-      }
-
-      alert(
-        "Password reset email sent. Please click the link in the latest email you receive."
-      );
-    } catch (err) {
-      console.error("Reset password exception:", err);
-      alert("Something went wrong.");
-    } finally {
-      if (settingsMenu) settingsMenu.classList.add("hidden");
-    }
-  });
-}
-
-// DELETE ACCOUNT POPUP LOGIC
-const deleteModal = document.getElementById("deleteModal");
-const deleteCloseBtn = document.getElementById("deleteCloseBtn");
-const deleteConfirmInput = document.getElementById("deleteConfirmInput");
-const finalDeleteBtn = document.getElementById("finalDeleteBtn");
-const goodbyeModal = document.getElementById("goodbyeModal");
-
-if (deleteAccountBtn) {
-  deleteAccountBtn.addEventListener("click", () => {
     deleteConfirmInput.value = "";
     finalDeleteBtn.disabled = true;
     finalDeleteBtn.classList.remove("enabled");
     deleteModal.classList.remove("hidden");
   });
-}
 
-deleteCloseBtn.addEventListener("click", () => {
-  deleteModal.classList.add("hidden");
-});
-
-deleteConfirmInput.addEventListener("input", () => {
-  if (deleteConfirmInput.value.trim() === "DELETE") {
-    finalDeleteBtn.disabled = false;
-    finalDeleteBtn.classList.add("enabled");
-  } else {
-    finalDeleteBtn.disabled = true;
-    finalDeleteBtn.classList.remove("enabled");
-  }
-});
-
-finalDeleteBtn.addEventListener("click", async () => {
-  if (!currentUser) return alert("Not logged in.");
-
-  try {
-    const { data: session } = await supabase.auth.getSession();
-    const accessToken = session?.session?.access_token;
-
-    const response = await fetch(
-      "https://fxexewdnbmiybbutcnyv.supabase.co/functions/v1/delete-user",
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        }
-      }
-    );
-
+  deleteCloseBtn.addEventListener("click", () => {
     deleteModal.classList.add("hidden");
+  });
 
-    if (!response.ok) {
-      alert("Failed to delete account.");
-      return;
+  deleteConfirmInput.addEventListener("input", () => {
+    if (deleteConfirmInput.value.trim() === "DELETE") {
+      finalDeleteBtn.disabled = false;
+      finalDeleteBtn.classList.add("enabled");
+    } else {
+      finalDeleteBtn.disabled = true;
+      finalDeleteBtn.classList.remove("enabled");
     }
+  });
 
-    // Sign out locally
-    await supabase.auth.signOut();
-    currentUser = null;
-    updateAuthUI();
-
-    // Show goodbye popup
-    goodbyeModal.classList.remove("hidden");
-
-    // Auto-hide after 2.5 sec
-    setTimeout(() => {
-      goodbyeModal.classList.add("hidden");
-    }, 2500);
-
-  } catch (err) {
-    console.error(err);
-    alert("Unexpected error deleting account.");
-  }
-});
-// --- SET NEW PASSWORD (after clicking email link) ---
-if (setNewPasswordBtn && passwordResetSection) {
-  setNewPasswordBtn.addEventListener("click", async () => {
-    const newPassword = newPasswordInput.value.trim();
-    if (!newPassword) {
-      alert("Please enter a new password.");
+  finalDeleteBtn.addEventListener("click", async () => {
+    if (!currentUser) {
+      alert("Not logged in.");
       return;
     }
 
     try {
-      const { data, error } = await supabase.auth.updateUser({
-        password: newPassword
-      });
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
 
-      if (error) {
-        console.error("updateUser error:", error);
-        alert(
-          "Could not update password: " +
-            error.message +
-            "\n\nIf this link came from an older email, request a new reset email from TaskSnacks."
-        );
+      const response = await fetch(
+        "https://fxexewdnbmiybbutcnyv.supabase.co/functions/v1/delete-user",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      deleteModal.classList.add("hidden");
+
+      if (!response.ok) {
+        console.error("Delete account error:", await response.text());
+        alert("Failed to delete account.");
         return;
       }
 
-      alert(
-        "Password updated successfully! For security, you'll need to log in again with your new password."
-      );
-
-      // Exit recovery mode, sign out, and show login form
-      isRecoveryMode = false;
-      if (passwordResetSection) passwordResetSection.style.display = "none";
       await supabase.auth.signOut();
       currentUser = null;
-
-      // Clear hash so the URL looks clean
-      try {
-        history.replaceState(null, "", window.location.pathname);
-      } catch (_) {
-        window.location.hash = "";
-      }
-
       updateAuthUI();
+
+      if (goodbyeModal) {
+        goodbyeModal.classList.remove("hidden");
+        setTimeout(() => {
+          goodbyeModal.classList.add("hidden");
+        }, 2500);
+      } else {
+        alert("Goodbye 👋 Your account has been deleted.");
+      }
     } catch (err) {
-      console.error("Update password exception:", err);
-      alert("Something went wrong while updating your password.");
+      console.error("Delete account exception:", err);
+      alert("Unexpected error deleting account.");
     }
   });
 }
 
 // === INIT ===
+handleRecoveryFromURL();
 checkSession();
 track("ts_page_loaded");
