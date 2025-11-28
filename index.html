@@ -10,13 +10,33 @@
   <div class="container">
     <!-- Top bar: About + Refresh (always visible) -->
     <div class="top-bar">
-      <button id="aboutBtn" class="about-btn" type="button">
-        About TaskSnacks
+  <button id="aboutBtn" class="about-btn" type="button">
+    About TaskSnacks
+  </button>
+
+  <div class="top-bar-right">
+    <button id="refreshBtn" class="cute-refresh" type="button">
+      Refresh
+    </button>
+
+    <!-- Settings menu trigger -->
+    <div class="settings-wrapper">
+      <button id="settingsBtn" class="settings-btn" type="button">
+        ⚙
       </button>
-      <button id="refreshBtn" class="cute-refresh" type="button">
-        Refresh
-      </button>
+
+      <!-- Small dropdown menu -->
+      <div id="settingsMenu" class="settings-menu hidden">
+        <button id="changePasswordBtn" type="button" class="settings-item">
+          Change my password
+        </button>
+        <button id="deleteAccountBtn" type="button" class="settings-item danger-item">
+          Delete my account
+        </button>
+      </div>
     </div>
+  </div>
+</div>
 
     <h1>TaskSnacks</h1>
     <p class="subtitle">
@@ -115,17 +135,7 @@
       </div>
     </div> <!-- /#appContent -->
   </div> <!-- /.container -->
-  
-<!-- Account settings (visible only when logged in) -->
-<div id="accountSettings" class="account-settings">
-  <h2>Your account</h2>
-  <p class="account-note">
-    You can delete your account and all your tasks. This action cannot be undone.
-  </p>
-  <button id="deleteAccountBtn" type="button" class="danger-btn">
-    Delete my account
-  </button>
-</div>
+
   
   <!-- About modal (visible whether logged in or not) -->
   <div id="aboutModal" class="modal hidden">
