@@ -52,6 +52,25 @@
       <button id="logoutBtn" type="button" style="display:none;">Log out</button>
       <p id="authStatus" class="auth-status"></p>
     </div>
+    
+<!-- Password reset section (only used when coming from the email link) -->
+<div id="passwordResetSection" style="display:none; margin-top:16px;">
+  <p>Set a new password for your TaskSnacks account.</p>
+  <input
+    id="newPasswordInput"
+    type="password"
+    placeholder="New password"
+    style="margin-top:8px; padding:8px; border-radius:8px; border:1px solid #e5e7eb; width:100%; max-width:260px;"
+  />
+  <button
+    id="setNewPasswordBtn"
+    type="button"
+    style="margin-top:8px;"
+  >
+    Update password
+  </button>
+</div>
+    
 <!-- About section shown only when logged out -->
 <div id="loggedOutInfo" class="logged-out-info" style="display:none;">
   <h2>Welcome to TaskSnacks</h2>
